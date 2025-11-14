@@ -1,37 +1,27 @@
-const fs = require('fs');
-const path = require('path');
+const { getStore } = require('@netlify/blobs');
 
-// Path to store recipes data
-const dataDir = '/tmp';
-const dataFile = path.join(dataDir, 'recipes.json');
-
-// Initialize data file if it doesn't exist
-function initDataFile() {
-    try {
-        if (!fs.existsSync(dataFile)) {
-            fs.writeFileSync(dataFile, JSON.stringify([]));
-        }
-    } catch (error) {
-        console.error('Error initializing data file:', error);
-    }
+// Get persistent storage for recipes
+async function getRecipesStore() {
+    return getStore('recipes');
 }
 
-// Read recipes from file
-function readRecipes() {
+// Read recipes from persistent storage
+async function readRecipes() {
     try {
-        initDataFile();
-        const data = fs.readFileSync(dataFile, 'utf8');
-        return JSON.parse(data);
+        const store = await getRecipesStore();
+        const data = await store.get('recipes');
+        return data ? JSON.parse(data) : [];
     } catch (error) {
         console.error('Error reading recipes:', error);
         return [];
     }
 }
 
-// Write recipes to file
-function writeRecipes(recipes) {
+// Write recipes to persistent storage
+async function writeRecipes(recipes) {
     try {
-        fs.writeFileSync(dataFile, JSON.stringify(recipes, null, 2));
+        const store = await getRecipesStore();
+        await store.set('recipes', JSON.stringify(recipes, null, 2));
         return true;
     } catch (error) {
         console.error('Error writing recipes:', error);
@@ -58,7 +48,7 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        const recipes = readRecipes();
+        const recipes = await readRecipes();
 
         // GET - Retrieve all recipes
         if (event.httpMethod === 'GET') {
@@ -74,7 +64,7 @@ exports.handler = async (event, context) => {
             const newRecipe = JSON.parse(event.body);
             recipes.push(newRecipe);
             
-            if (writeRecipes(recipes)) {
+            if (await writeRecipes(recipes)) {
                 return {
                     statusCode: 201,
                     headers,
@@ -97,7 +87,7 @@ exports.handler = async (event, context) => {
             if (index !== -1) {
                 recipes[index] = updatedRecipe;
                 
-                if (writeRecipes(recipes)) {
+                if (await writeRecipes(recipes)) {
                     return {
                         statusCode: 200,
                         headers,
@@ -125,7 +115,7 @@ exports.handler = async (event, context) => {
             const filteredRecipes = recipes.filter(r => r.id !== id);
             
             if (filteredRecipes.length < recipes.length) {
-                if (writeRecipes(filteredRecipes)) {
+                if (await writeRecipes(filteredRecipes)) {
                     return {
                         statusCode: 200,
                         headers,
