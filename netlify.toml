@@ -6,6 +6,9 @@
   node_bundler = "esbuild"
   included_files = ["netlify/functions/**"]
 
+[context.production]
+  environment = { NETLIFY_BLOBS_CONTEXT = "production" }
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"

@@ -1,46 +1,35 @@
-// Simple in-memory storage (persists during function lifetime)
-// Note: This is a temporary solution. For production, consider using a proper database.
-let recipesCache = null;
+const { getStore } = require('@netlify/blobs');
 
-// Read recipes from environment variable or cache
+// Get persistent storage for recipes - simplified version
+async function getRecipesStore() {
+    // Just use simple store name - Netlify should auto-configure
+    return getStore('recipes');
+}
+
+// Read recipes from persistent storage
 async function readRecipes() {
     try {
-        // Try to use cache first
-        if (recipesCache !== null) {
-            console.log('Read recipes from cache, count:', recipesCache.length);
-            return recipesCache;
-        }
-        
-        // Try to read from environment variable (set via Netlify UI or API)
-        const storedData = process.env.RECIPES_DATA;
-        if (storedData) {
-            recipesCache = JSON.parse(storedData);
-            console.log('Read recipes from env, count:', recipesCache.length);
-            return recipesCache;
-        }
-        
-        console.log('No recipes found, returning empty array');
-        recipesCache = [];
-        return [];
+        const store = await getRecipesStore();
+        const data = await store.get('recipes');
+        console.log('Read recipes from Blobs, data exists:', !!data);
+        return data ? JSON.parse(data) : [];
     } catch (error) {
         console.error('Error reading recipes:', error.message);
-        recipesCache = [];
+        console.error('Full error:', error);
         return [];
     }
 }
 
-// Write recipes to cache (persists during function lifetime)
+// Write recipes to persistent storage
 async function writeRecipes(recipes) {
     try {
-        recipesCache = recipes;
-        console.log('Successfully wrote recipes to cache, count:', recipes.length);
-        
-        // Log the data so you can save it manually if needed
-        console.log('Recipe data (copy this to save):', JSON.stringify(recipes));
-        
+        const store = await getRecipesStore();
+        await store.set('recipes', JSON.stringify(recipes, null, 2));
+        console.log('Successfully wrote recipes to Blobs, count:', recipes.length);
         return true;
     } catch (error) {
         console.error('Error writing recipes:', error.message);
+        console.error('Full error:', error);
         return false;
     }
 }
