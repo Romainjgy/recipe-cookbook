@@ -1,36 +1,46 @@
-const { getStore } = require('@netlify/blobs');
+// Simple in-memory storage (persists during function lifetime)
+// Note: This is a temporary solution. For production, consider using a proper database.
+let recipesCache = null;
 
-// Get persistent storage for recipes
-async function getRecipesStore(context) {
-    return getStore({
-        name: 'recipes',
-        siteID: context.site?.id || process.env.SITE_ID,
-        token: process.env.NETLIFY_BLOBS_TOKEN || context.token
-    });
-}
-
-// Read recipes from persistent storage
-async function readRecipes(context) {
+// Read recipes from environment variable or cache
+async function readRecipes() {
     try {
-        const store = await getRecipesStore(context);
-        const data = await store.get('recipes');
-        console.log('Read recipes, data length:', data?.length || 0);
-        return data ? JSON.parse(data) : [];
+        // Try to use cache first
+        if (recipesCache !== null) {
+            console.log('Read recipes from cache, count:', recipesCache.length);
+            return recipesCache;
+        }
+        
+        // Try to read from environment variable (set via Netlify UI or API)
+        const storedData = process.env.RECIPES_DATA;
+        if (storedData) {
+            recipesCache = JSON.parse(storedData);
+            console.log('Read recipes from env, count:', recipesCache.length);
+            return recipesCache;
+        }
+        
+        console.log('No recipes found, returning empty array');
+        recipesCache = [];
+        return [];
     } catch (error) {
-        console.error('Error reading recipes:', error.message, error.stack);
+        console.error('Error reading recipes:', error.message);
+        recipesCache = [];
         return [];
     }
 }
 
-// Write recipes to persistent storage
-async function writeRecipes(recipes, context) {
+// Write recipes to cache (persists during function lifetime)
+async function writeRecipes(recipes) {
     try {
-        const store = await getRecipesStore(context);
-        await store.set('recipes', JSON.stringify(recipes, null, 2));
-        console.log('Successfully wrote recipes, count:', recipes.length);
+        recipesCache = recipes;
+        console.log('Successfully wrote recipes to cache, count:', recipes.length);
+        
+        // Log the data so you can save it manually if needed
+        console.log('Recipe data (copy this to save):', JSON.stringify(recipes));
+        
         return true;
     } catch (error) {
-        console.error('Error writing recipes:', error.message, error.stack);
+        console.error('Error writing recipes:', error.message);
         return false;
     }
 }
@@ -56,7 +66,7 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        const recipes = await readRecipes(context);
+        const recipes = await readRecipes();
         console.log('Loaded recipes count:', recipes.length);
 
         // GET - Retrieve all recipes
@@ -74,7 +84,7 @@ exports.handler = async (event, context) => {
             console.log('Creating recipe:', newRecipe.name);
             recipes.push(newRecipe);
             
-            if (await writeRecipes(recipes, context)) {
+            if (await writeRecipes(recipes)) {
                 return {
                     statusCode: 201,
                     headers,
@@ -97,7 +107,7 @@ exports.handler = async (event, context) => {
             if (index !== -1) {
                 recipes[index] = updatedRecipe;
                 
-                if (await writeRecipes(recipes, context)) {
+                if (await writeRecipes(recipes)) {
                     return {
                         statusCode: 200,
                         headers,
@@ -125,7 +135,7 @@ exports.handler = async (event, context) => {
             const filteredRecipes = recipes.filter(r => r.id !== id);
             
             if (filteredRecipes.length < recipes.length) {
-                if (await writeRecipes(filteredRecipes, context)) {
+                if (await writeRecipes(filteredRecipes)) {
                     return {
                         statusCode: 200,
                         headers,
