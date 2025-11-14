@@ -1,6 +1,5 @@
 // Recipe management app
-// GitHub Pages version - reads from static JSON file
-const API_BASE = './recipes.json';
+const API_BASE = '/.netlify/functions';
 
 let recipes = [];
 let currentRecipeId = null;
@@ -48,7 +47,7 @@ function setupEventListeners() {
 
 async function loadRecipes() {
     try {
-        const response = await fetch('./recipes.json');
+        const response = await fetch(`${API_BASE}/recipes`);
         if (response.ok) {
             recipes = await response.json();
             displayRecipes(recipes);
@@ -137,18 +136,65 @@ function openModal(recipe = null) {
 async function handleSubmit(e) {
     e.preventDefault();
     
-    alert('⚠️ GitHub Pages Mode: This site is read-only. To add recipes, edit the recipes.json file in your repository and push to GitHub.');
+    const recipe = {
+        id: currentRecipeId || Date.now().toString(),
+        name: document.getElementById('recipeName').value,
+        category: document.getElementById('recipeCategory').value,
+        prepTime: parseInt(document.getElementById('prepTime').value) || null,
+        cookTime: parseInt(document.getElementById('cookTime').value) || null,
+        servings: parseInt(document.getElementById('servings').value) || null,
+        image: document.getElementById('recipeImage').value || null,
+        ingredients: document.getElementById('ingredients').value.split('\n').filter(i => i.trim()),
+        instructions: document.getElementById('instructions').value.split('\n').filter(i => i.trim()),
+        notes: document.getElementById('notes').value || null,
+        createdAt: currentRecipeId ? recipes.find(r => r.id === currentRecipeId)?.createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
     
-    // Note: For GitHub Pages, you would need to manually edit recipes.json
-    // This form is disabled in static mode
+    try {
+        const method = currentRecipeId ? 'PUT' : 'POST';
+        const response = await fetch(`${API_BASE}/recipes`, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(recipe)
+        });
+        
+        if (response.ok) {
+            recipeModal.style.display = 'none';
+            await loadRecipes();
+        } else {
+            alert('Failed to save recipe. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error saving recipe:', error);
+        alert('Error saving recipe. Please try again.');
+    }
 }
 
 function editRecipe(id) {
-    alert('⚠️ GitHub Pages Mode: Editing is disabled. To modify recipes, edit the recipes.json file in your repository and push to GitHub.');
+    const recipe = recipes.find(r => r.id === id);
+    if (recipe) {
+        openModal(recipe);
+    }
 }
 
 async function deleteRecipe(id) {
-    alert('⚠️ GitHub Pages Mode: Deletion is disabled. To remove recipes, edit the recipes.json file in your repository and push to GitHub.');
+    if (!confirm('Are you sure you want to delete this recipe?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/recipes?id=${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            await loadRecipes();
+        } else {
+            alert('Failed to delete recipe. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error deleting recipe:', error);
+        alert('Error deleting recipe. Please try again.');
+    }
 }
 
 function viewRecipe(id) {
