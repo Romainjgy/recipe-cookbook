@@ -1,0 +1,15 @@
+{
+  "name": "recipe-cookbook",
+  "version": "1.0.0",
+  "description": "A simple recipe cookbook website",
+  "main": "index.html",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "keywords": ["recipes", "cookbook", "netlify"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}
