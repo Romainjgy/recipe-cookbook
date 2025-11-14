@@ -1,35 +1,43 @@
 const { getStore } = require('@netlify/blobs');
 
 // Get persistent storage for recipes
-async function getRecipesStore() {
-    return getStore('recipes');
+async function getRecipesStore(context) {
+    return getStore({
+        name: 'recipes',
+        siteID: context.site?.id || process.env.SITE_ID,
+        token: process.env.NETLIFY_BLOBS_TOKEN || context.token
+    });
 }
 
 // Read recipes from persistent storage
-async function readRecipes() {
+async function readRecipes(context) {
     try {
-        const store = await getRecipesStore();
+        const store = await getRecipesStore(context);
         const data = await store.get('recipes');
+        console.log('Read recipes, data length:', data?.length || 0);
         return data ? JSON.parse(data) : [];
     } catch (error) {
-        console.error('Error reading recipes:', error);
+        console.error('Error reading recipes:', error.message, error.stack);
         return [];
     }
 }
 
 // Write recipes to persistent storage
-async function writeRecipes(recipes) {
+async function writeRecipes(recipes, context) {
     try {
-        const store = await getRecipesStore();
+        const store = await getRecipesStore(context);
         await store.set('recipes', JSON.stringify(recipes, null, 2));
+        console.log('Successfully wrote recipes, count:', recipes.length);
         return true;
     } catch (error) {
-        console.error('Error writing recipes:', error);
+        console.error('Error writing recipes:', error.message, error.stack);
         return false;
     }
 }
 
 exports.handler = async (event, context) => {
+    console.log('Function invoked:', event.httpMethod, event.path);
+    
     // Set CORS headers
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -48,7 +56,8 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        const recipes = await readRecipes();
+        const recipes = await readRecipes(context);
+        console.log('Loaded recipes count:', recipes.length);
 
         // GET - Retrieve all recipes
         if (event.httpMethod === 'GET') {
@@ -62,9 +71,10 @@ exports.handler = async (event, context) => {
         // POST - Create new recipe
         if (event.httpMethod === 'POST') {
             const newRecipe = JSON.parse(event.body);
+            console.log('Creating recipe:', newRecipe.name);
             recipes.push(newRecipe);
             
-            if (await writeRecipes(recipes)) {
+            if (await writeRecipes(recipes, context)) {
                 return {
                     statusCode: 201,
                     headers,
@@ -87,7 +97,7 @@ exports.handler = async (event, context) => {
             if (index !== -1) {
                 recipes[index] = updatedRecipe;
                 
-                if (await writeRecipes(recipes)) {
+                if (await writeRecipes(recipes, context)) {
                     return {
                         statusCode: 200,
                         headers,
@@ -115,7 +125,7 @@ exports.handler = async (event, context) => {
             const filteredRecipes = recipes.filter(r => r.id !== id);
             
             if (filteredRecipes.length < recipes.length) {
-                if (await writeRecipes(filteredRecipes)) {
+                if (await writeRecipes(filteredRecipes, context)) {
                     return {
                         statusCode: 200,
                         headers,
@@ -145,11 +155,15 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error in handler:', error.message, error.stack);
         return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ error: 'Internal server error', details: error.message })
+            body: JSON.stringify({ 
+                error: 'Internal server error', 
+                details: error.message,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            })
         };
     }
 };
