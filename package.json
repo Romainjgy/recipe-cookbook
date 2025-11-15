@@ -3,16 +3,8 @@
   "version": "1.0.0",
   "description": "A simple recipe cookbook website",
   "main": "index.html",
-  "scripts": {
-    "dev": "netlify dev"
-  },
-  "keywords": ["recipes", "cookbook", "netlify"],
+  "scripts": {},
+  "keywords": ["recipes", "cookbook"],
   "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
-  },
-  "devDependencies": {
-    "netlify-cli": "^17.0.0"
-  }
+  "license": "MIT"
 }

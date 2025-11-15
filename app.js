@@ -1,5 +1,8 @@
 // Recipe management app
-const API_BASE = '/.netlify/functions';
+const GITHUB_OWNER = 'Romainjgy';
+const GITHUB_REPO = 'recipe-cookbook';
+const GITHUB_TOKEN = 'YOUR_GITHUB_TOKEN_HERE'; // You'll need to add your token
+const RECIPES_FILE = 'recipes.json';
 
 let recipes = [];
 let currentRecipeId = null;
@@ -47,7 +50,7 @@ function setupEventListeners() {
 
 async function loadRecipes() {
     try {
-        const response = await fetch(`${API_BASE}/recipes`);
+        const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${RECIPES_FILE}`);
         if (response.ok) {
             recipes = await response.json();
             displayRecipes(recipes);
@@ -152,19 +155,19 @@ async function handleSubmit(e) {
     };
     
     try {
-        const method = currentRecipeId ? 'PUT' : 'POST';
-        const response = await fetch(`${API_BASE}/recipes`, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(recipe)
-        });
-        
-        if (response.ok) {
-            recipeModal.style.display = 'none';
-            await loadRecipes();
+        // Update local array
+        if (currentRecipeId) {
+            const index = recipes.findIndex(r => r.id === currentRecipeId);
+            recipes[index] = recipe;
         } else {
-            alert('Failed to save recipe. Please try again.');
+            recipes.push(recipe);
         }
+        
+        // Save to GitHub
+        await saveToGitHub(recipes);
+        
+        recipeModal.style.display = 'none';
+        displayRecipes(recipes);
     } catch (error) {
         console.error('Error saving recipe:', error);
         alert('Error saving recipe. Please try again.');
@@ -182,18 +185,50 @@ async function deleteRecipe(id) {
     if (!confirm('Are you sure you want to delete this recipe?')) return;
     
     try {
-        const response = await fetch(`${API_BASE}/recipes?id=${id}`, {
-            method: 'DELETE'
-        });
-        
-        if (response.ok) {
-            await loadRecipes();
-        } else {
-            alert('Failed to delete recipe. Please try again.');
-        }
+        recipes = recipes.filter(r => r.id !== id);
+        await saveToGitHub(recipes);
+        displayRecipes(recipes);
     } catch (error) {
         console.error('Error deleting recipe:', error);
         alert('Error deleting recipe. Please try again.');
+    }
+}
+
+async function saveToGitHub(recipesData) {
+    // Get current file SHA
+    const fileResponse = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${RECIPES_FILE}`,
+        {
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        }
+    );
+    
+    const fileData = await fileResponse.json();
+    const sha = fileData.sha;
+    
+    // Update file
+    const response = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${RECIPES_FILE}`,
+        {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: 'Update recipes',
+                content: btoa(JSON.stringify(recipesData, null, 2)),
+                sha: sha
+            })
+        }
+    );
+    
+    if (!response.ok) {
+        throw new Error('Failed to save to GitHub');
     }
 }
 
