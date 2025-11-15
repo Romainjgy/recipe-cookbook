@@ -34,5 +34,23 @@
     "notes": null,
     "createdAt": "2025-11-15T15:58:00.291Z",
     "updatedAt": "2025-11-15T15:58:00.291Z"
+  },
+  {
+    "id": "1763222860380",
+    "name": "helooo",
+    "category": "snack",
+    "prepTime": null,
+    "cookTime": null,
+    "servings": null,
+    "image": null,
+    "ingredients": [
+      "we'll see"
+    ],
+    "instructions": [
+      "hope"
+    ],
+    "notes": null,
+    "createdAt": "2025-11-15T16:07:40.380Z",
+    "updatedAt": "2025-11-15T16:07:40.380Z"
   }
 ]
