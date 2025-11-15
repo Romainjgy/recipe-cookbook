@@ -1,38 +1,9 @@
-const { getStore } = require('@netlify/blobs');
+const { createClient } = require('@supabase/supabase-js');
 
-// Get persistent storage for recipes - simplified version
-async function getRecipesStore() {
-    // Just use simple store name - Netlify should auto-configure
-    return getStore('recipes');
-}
-
-// Read recipes from persistent storage
-async function readRecipes() {
-    try {
-        const store = await getRecipesStore();
-        const data = await store.get('recipes');
-        console.log('Read recipes from Blobs, data exists:', !!data);
-        return data ? JSON.parse(data) : [];
-    } catch (error) {
-        console.error('Error reading recipes:', error.message);
-        console.error('Full error:', error);
-        return [];
-    }
-}
-
-// Write recipes to persistent storage
-async function writeRecipes(recipes) {
-    try {
-        const store = await getRecipesStore();
-        await store.set('recipes', JSON.stringify(recipes, null, 2));
-        console.log('Successfully wrote recipes to Blobs, count:', recipes.length);
-        return true;
-    } catch (error) {
-        console.error('Error writing recipes:', error.message);
-        console.error('Full error:', error);
-        return false;
-    }
-}
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 exports.handler = async (event, context) => {
     console.log('Function invoked:', event.httpMethod, event.path);
@@ -55,15 +26,19 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        const recipes = await readRecipes();
-        console.log('Loaded recipes count:', recipes.length);
-
         // GET - Retrieve all recipes
         if (event.httpMethod === 'GET') {
+            const { data, error } = await supabase
+                .from('recipes')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify(recipes)
+                body: JSON.stringify(data || [])
             };
         }
 
@@ -71,79 +46,68 @@ exports.handler = async (event, context) => {
         if (event.httpMethod === 'POST') {
             const newRecipe = JSON.parse(event.body);
             console.log('Creating recipe:', newRecipe.name);
-            recipes.push(newRecipe);
             
-            if (await writeRecipes(recipes)) {
-                return {
-                    statusCode: 201,
-                    headers,
-                    body: JSON.stringify(newRecipe)
-                };
-            } else {
-                return {
-                    statusCode: 500,
-                    headers,
-                    body: JSON.stringify({ error: 'Failed to save recipe' })
-                };
-            }
+            const { data, error } = await supabase
+                .from('recipes')
+                .insert([newRecipe])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            
+            return {
+                statusCode: 201,
+                headers,
+                body: JSON.stringify(data)
+            };
         }
 
         // PUT - Update existing recipe
         if (event.httpMethod === 'PUT') {
             const updatedRecipe = JSON.parse(event.body);
-            const index = recipes.findIndex(r => r.id === updatedRecipe.id);
+            const { id, ...updateData } = updatedRecipe;
             
-            if (index !== -1) {
-                recipes[index] = updatedRecipe;
-                
-                if (await writeRecipes(recipes)) {
+            const { data, error } = await supabase
+                .from('recipes')
+                .update(updateData)
+                .eq('id', id)
+                .select()
+                .single();
+            
+            if (error) {
+                if (error.code === 'PGRST116') {
                     return {
-                        statusCode: 200,
+                        statusCode: 404,
                         headers,
-                        body: JSON.stringify(updatedRecipe)
-                    };
-                } else {
-                    return {
-                        statusCode: 500,
-                        headers,
-                        body: JSON.stringify({ error: 'Failed to update recipe' })
+                        body: JSON.stringify({ error: 'Recipe not found' })
                     };
                 }
-            } else {
-                return {
-                    statusCode: 404,
-                    headers,
-                    body: JSON.stringify({ error: 'Recipe not found' })
-                };
+                throw error;
             }
+            
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify(data)
+            };
         }
 
         // DELETE - Remove recipe
         if (event.httpMethod === 'DELETE') {
             const id = event.queryStringParameters?.id;
-            const filteredRecipes = recipes.filter(r => r.id !== id);
             
-            if (filteredRecipes.length < recipes.length) {
-                if (await writeRecipes(filteredRecipes)) {
-                    return {
-                        statusCode: 200,
-                        headers,
-                        body: JSON.stringify({ message: 'Recipe deleted successfully' })
-                    };
-                } else {
-                    return {
-                        statusCode: 500,
-                        headers,
-                        body: JSON.stringify({ error: 'Failed to delete recipe' })
-                    };
-                }
-            } else {
-                return {
-                    statusCode: 404,
-                    headers,
-                    body: JSON.stringify({ error: 'Recipe not found' })
-                };
-            }
+            const { error } = await supabase
+                .from('recipes')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ message: 'Recipe deleted successfully' })
+            };
         }
 
         // Method not allowed
@@ -160,8 +124,7 @@ exports.handler = async (event, context) => {
             headers,
             body: JSON.stringify({ 
                 error: 'Internal server error', 
-                details: error.message,
-                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+                details: error.message
             })
         };
     }
