@@ -51,7 +51,8 @@ function setupEventListeners() {
 
 async function loadRecipes() {
     try {
-        const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${RECIPES_FILE}`);
+        // Add timestamp to prevent caching
+        const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${RECIPES_FILE}?t=${Date.now()}`);
         if (response.ok) {
             recipes = await response.json();
             displayRecipes(recipes);
@@ -168,7 +169,9 @@ async function handleSubmit(e) {
         await saveToGitHub(recipes);
         
         recipeModal.style.display = 'none';
-        displayRecipes(recipes);
+        
+        // Reload from GitHub to ensure we have the latest data
+        await loadRecipes();
     } catch (error) {
         console.error('Error saving recipe:', error);
         alert('Error saving recipe. Please try again.');
@@ -188,7 +191,9 @@ async function deleteRecipe(id) {
     try {
         recipes = recipes.filter(r => r.id !== id);
         await saveToGitHub(recipes);
-        displayRecipes(recipes);
+        
+        // Reload from GitHub to ensure we have the latest data
+        await loadRecipes();
     } catch (error) {
         console.error('Error deleting recipe:', error);
         alert('Error deleting recipe. Please try again.');
@@ -196,9 +201,9 @@ async function deleteRecipe(id) {
 }
 
 async function saveToGitHub(recipesData) {
-    // Get current file SHA
+    // Get current file SHA and content from GitHub
     const fileResponse = await fetch(
-        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${RECIPES_FILE}`,
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${RECIPES_FILE}?t=${Date.now()}`,
         {
             headers: {
                 'Authorization': `token ${GITHUB_TOKEN}`,
