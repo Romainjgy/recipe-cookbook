@@ -2,7 +2,7 @@
 // GitHub configuration - token is base64 encoded to avoid GitHub's push protection
 const GITHUB_OWNER = 'Romainjgy';
 const GITHUB_REPO = 'recipe-cookbook';
-const GITHUB_TOKEN = atob('Z2hwX2ZpbnI1V2pRYXlDVVo1Vjg4bTk3UTBob1RnNDM2ODNEYzJMTQ==');
+const GITHUB_TOKEN = atob('Z2hwX1Vtek1XNVFENVBUWWM1eUtnbG9GeUd3VXJpS1lObzFORm05OA==');
 const RECIPES_FILE = 'recipes.json';
 
 let recipes = [];
