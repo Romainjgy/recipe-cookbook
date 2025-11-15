@@ -1,8 +1,8 @@
-// Recipe management app
-// GitHub configuration - Token stored in GitHub Secrets
+// Recipe management app - TEMPLATE VERSION
+// Copy this to app.js and add your GitHub token
 const GITHUB_OWNER = 'Romainjgy';
 const GITHUB_REPO = 'recipe-cookbook';
-const GITHUB_TOKEN = '{{GITHUB_TOKEN}}'; // This will be replaced by GitHub Actions
+const GITHUB_TOKEN = 'YOUR_GITHUB_TOKEN_HERE'; // Get from https://github.com/settings/tokens
 const RECIPES_FILE = 'recipes.json';
 
 let recipes = [];
