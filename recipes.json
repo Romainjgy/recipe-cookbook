@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "1763221199527",
+    "name": "'retyui",
+    "category": "dinner",
+    "prepTime": null,
+    "cookTime": null,
+    "servings": null,
+    "image": null,
+    "ingredients": [
+      "rtyujkueqtsrdyukj"
+    ],
+    "instructions": [
+      "etsrytuyi"
+    ],
+    "notes": null,
+    "createdAt": "2025-11-15T15:39:59.527Z",
+    "updatedAt": "2025-11-15T15:39:59.528Z"
+  }
+]
