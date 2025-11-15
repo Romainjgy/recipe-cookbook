@@ -16,5 +16,23 @@
     "notes": null,
     "createdAt": "2025-11-15T15:39:59.527Z",
     "updatedAt": "2025-11-15T15:39:59.528Z"
+  },
+  {
+    "id": "1763221946331",
+    "name": "rthyjukil",
+    "category": "dinner",
+    "prepTime": null,
+    "cookTime": null,
+    "servings": null,
+    "image": null,
+    "ingredients": [
+      "fgrtyujk"
+    ],
+    "instructions": [
+      "fegrthyjkl"
+    ],
+    "notes": null,
+    "createdAt": "2025-11-15T15:52:26.331Z",
+    "updatedAt": "2025-11-15T15:52:26.331Z"
   }
 ]
