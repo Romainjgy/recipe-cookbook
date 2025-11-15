@@ -1,8 +1,5 @@
 // Recipe management app
-const GITHUB_OWNER = 'Romainjgy';
-const GITHUB_REPO = 'recipe-cookbook';
-const GITHUB_TOKEN = 'YOUR_GITHUB_TOKEN_HERE'; // You'll need to add your token
-const RECIPES_FILE = 'recipes.json';
+// GitHub config is loaded from config.js (not committed to repo)
 
 let recipes = [];
 let currentRecipeId = null;
